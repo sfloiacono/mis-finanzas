@@ -349,6 +349,11 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--bg3);}
   .inline-form{grid-template-columns:1fr 1fr;}
   .inline-form .btn-add{grid-column:1/-1;}
 
+  /* Ocultar × en móvil */
+  .desktop-only{display:none!important;}
+  /* Lápiz más visible en móvil */
+  .edit-btn{font-size:18px!important;padding:4px 8px!important;}
+
   /* MODAL */
   .modal{padding:1rem;margin:1rem;}
   .modal-row{grid-template-columns:1fr 1fr;}
@@ -1289,8 +1294,8 @@ function renderTable(s){
       <td><span class="pay-tag">${g.medio||''}</span></td>
       <td style="font-size:10px;color:var(--muted2);font-weight:300">${g.date||''}</td>
       <td style="display:flex;gap:4px;align-items:center">
-        <button class="del-btn" onclick="editGasto(${i})" style="color:var(--muted)">✎</button>
-        <button class="del-btn" onclick="deleteGasto(${i})">×</button>
+        <button class="del-btn edit-btn" onclick="editGasto(${i})" style="color:var(--muted)">✎</button>
+        <button class="del-btn delete-btn desktop-only" onclick="deleteGasto(${i})">×</button>
       </td></tr>`;
   }).join('');
   // populate bulk cat select
