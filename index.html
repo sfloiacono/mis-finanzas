@@ -306,8 +306,46 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--bg3);}
   /* PRESUPUESTO */
   .bgt-item{grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:8px;}
 
-  /* GASTOS FIJOS */
-  .fijo-item{grid-template-columns:20px 20px 1fr auto!important;grid-template-rows:auto auto;gap:6px 8px;}
+  /* GASTOS FIJOS — cards en móvil */
+  #fijos-list .fijo-item{
+    display:block!important;
+    position:relative;
+    padding:0.875rem;
+  }
+  #fijos-list .fijo-item .drag-handle{display:none;}
+  #fijos-list .fijo-item input[type="checkbox"]{
+    position:absolute;top:0.875rem;left:0.875rem;
+  }
+  #fijos-list .fijo-item .fijo-nombre{
+    font-size:14px;font-weight:500;
+    padding-left:28px;
+    padding-right:60px;
+    margin-bottom:4px;
+    display:block;
+  }
+  #fijos-list .fijo-item .fijo-cat{
+    font-size:11px;color:var(--muted);
+    padding-left:28px;
+    margin-bottom:8px;
+    display:block;
+  }
+  #fijos-list .fijo-item input[type="number"]{
+    width:100%!important;
+    margin-bottom:8px;
+  }
+  #fijos-list .fijo-item .pay-tag{
+    display:inline-block;
+    margin-bottom:8px;
+  }
+  #fijos-list .fijo-item .btn-del{
+    position:absolute;top:0.875rem;right:0.875rem;
+    font-size:18px;
+  }
+  /* Col labels ocultos en móvil */
+  .fijos-col-labels{display:none;}
+  /* Bulk bar fijos */
+  #fijos-bulk-bar{flex-wrap:wrap;gap:8px;}
+  #fijos-bulk-bar select{width:100%;}
   .inline-form{grid-template-columns:1fr 1fr;}
   .inline-form .btn-add{grid-column:1/-1;}
 
