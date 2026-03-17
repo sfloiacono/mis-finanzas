@@ -477,9 +477,12 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--bg3);}
         <table id="tabla" style="display:none">
           <thead><tr>
             <th class="col-chk" style="width:4%;display:none"><input type="checkbox" id="chk-all-desktop" onchange="toggleSelectAll(this)" style="cursor:pointer;accent-color:var(--accent)" /></th>
-            <th style="width:26%">Descripción</th><th style="width:14%">Monto</th>
-            <th style="width:22%">Categoría</th><th style="width:20%">Medio de pago</th>
-            <th style="width:9%">Fecha</th><th style="width:5%"></th>
+            <th style="width:26%;cursor:pointer;user-select:none" onclick="sortTable('desc')">Descripción <span id="sort-desc"></span></th>
+            <th style="width:14%;cursor:pointer;user-select:none" onclick="sortTable('monto')">Monto <span id="sort-monto"></span></th>
+            <th style="width:22%;cursor:pointer;user-select:none" onclick="sortTable('cat')">Categoría <span id="sort-cat"></span></th>
+            <th style="width:20%;cursor:pointer;user-select:none" onclick="sortTable('medio')">Medio de pago <span id="sort-medio"></span></th>
+            <th style="width:9%;cursor:pointer;user-select:none" onclick="sortTable('date')">Fecha <span id="sort-date"></span></th>
+            <th style="width:5%"></th>
           </tr></thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -690,6 +693,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:var(--bg3);}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 <script>
 // ── AUDIO ─────────────────────────────────────────────────────────
 const AC=new(window.AudioContext||window.webkitAudioContext)();
@@ -748,73 +753,67 @@ const GC=['#f5a623','#60a5fa','#fbbf24','#f472b6','#a78bfa','#34d399','#fb923c',
 
 // ── STORAGE ───────────────────────────────────────────────────────
 const K='fin10_';
-// ── CLOUD SYNC ────────────────────────────────────────────────────
-const GS_URL='https://script.google.com/macros/s/AKfycbxAVhEWkBHq6Pf8Gr-eZOxIACPnCAdv_nQ1IQZjZAndiHSakBSmmU8kLk5CkmDFJyXTrQ/exec';
-let syncPending=false;
+// ── FIREBASE ──────────────────────────────────────────────────────
+let db=null,syncTimer=null;
 
-function cloudGet(key){
-  return new Promise((resolve)=>{
-    const cbName='cb_'+Math.random().toString(36).slice(2);
-    const script=document.createElement('script');
-    const timeout=setTimeout(()=>{
-      delete window[cbName];
-      script.remove();
-      resolve(null);
-    },8000);
-    window[cbName]=(data)=>{
-      clearTimeout(timeout);
-      delete window[cbName];
-      script.remove();
-      resolve(data&&data.value!=null?data.value:null);
-    };
-    script.src=GS_URL+'?key='+encodeURIComponent(key)+'&callback='+cbName;
-    document.head.appendChild(script);
-  });
+function initFirebase(){
+  const firebaseConfig={
+    apiKey:"AIzaSyA1qj4n7mPayZvmcevtNmTgZqItDzVPcKE",
+    authDomain:"mis-finanzas-e9422.firebaseapp.com",
+    databaseURL:"https://mis-finanzas-e9422-default-rtdb.firebaseio.com",
+    projectId:"mis-finanzas-e9422",
+    storageBucket:"mis-finanzas-e9422.firebasestorage.app",
+    messagingSenderId:"734786323569",
+    appId:"1:734786323569:web:968ddb67edf121947207d0"
+  };
+  if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+  db=firebase.database();
 }
 
+async function cloudGet(key){
+  try{
+    const snap=await db.ref('finanzas/'+key).get();
+    return snap.exists()?snap.val():null;
+  }catch(e){return null;}
+}
 async function cloudSet(key,value){
   try{
-    await fetch(GS_URL,{
-      method:'POST',
-      mode:'no-cors',
-      body:JSON.stringify({key,value}),
-      headers:{'Content-Type':'application/json'}
-    });
+    await db.ref('finanzas/'+key).set(value);
   }catch(e){}
 }
 async function syncToCloud(){
-  if(syncPending)return;
-  syncPending=true;
-  const keys=[K+'grupos',K+'medios',K+'atajos',K+'fijos',K+'months',K+'cur'];
-  getMonths().forEach(m=>keys.push(gk(m)));
-  for(const k of keys){
-    const val=localStorage.getItem(k);
-    if(val)await cloudSet(k,val);
-  }
-  syncPending=false;
-  showSyncStatus('✓ Sincronizado');
+  if(syncTimer)clearTimeout(syncTimer);
+  syncTimer=setTimeout(async()=>{
+    showSyncStatus('↑ Guardando...');
+    try{
+      const data={};
+      const keys=[K+'grupos',K+'medios',K+'atajos',K+'fijos',K+'months',K+'cur'];
+      getMonths().forEach(m=>keys.push(gk(m)));
+      keys.forEach(k=>{const v=localStorage.getItem(k);if(v)data[k]=v;});
+      await db.ref('finanzas').set(data);
+      showSyncStatus('✓ Sincronizado');
+    }catch(e){showSyncStatus('Error al guardar');}
+  },1500);
 }
 async function syncFromCloud(){
   showSyncStatus('↓ Sincronizando...');
-  const keys=[K+'grupos',K+'medios',K+'atajos',K+'fijos',K+'months',K+'cur'];
-  for(const k of keys){
-    const val=await cloudGet(k);
-    if(val)localStorage.setItem(k,val);
+  try{
+    const snap=await db.ref('finanzas').get();
+    if(!snap.exists()){showSyncStatus('Sin datos en la nube');return;}
+    const data=snap.val();
+    Object.keys(data).forEach(k=>{if(k.startsWith(K))localStorage.setItem(k,data[k]);});
+    showSyncStatus('✓ Sincronizado');
+    refreshSels();renderMonthSel();loadMonth();
+    toast('Datos sincronizados');
+  }catch(e){
+    showSyncStatus('Error de sync');
+    toast('Error al sincronizar');
   }
-  const ms=getMonths();
-  for(const m of ms){
-    const val=await cloudGet(gk(m));
-    if(val)localStorage.setItem(gk(m),val);
-  }
-  showSyncStatus('✓ Sincronizado');
-  refreshSels();renderMonthSel();loadMonth();
-  toast('Datos sincronizados desde la nube');
 }
 function showSyncStatus(msg){
   const el=document.getElementById('sync-status');
-  if(el){el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0.4',2000);}
+  if(el){el.textContent=msg;el.style.opacity='1';setTimeout(()=>el.style.opacity='0.4',2500);}
 }
-
 function getG(){const r=localStorage.getItem(K+'grupos');return r?JSON.parse(r):JSON.parse(JSON.stringify(GD));}
 function saveG(g){localStorage.setItem(K+'grupos',JSON.stringify(g));refreshSels();syncToCloud();}
 function getM(){const r=localStorage.getItem(K+'medios');return r?JSON.parse(r):[...MD];}
@@ -1292,7 +1291,15 @@ function deleteGasto(i){
   const m=curMonth(),s=gs(m);s.gastos.splice(i,1);ss(m,s);
   ps('delete');updateMetrics(s);renderTable(s);
 }
-let selectionMode=false;
+let sortCol=null,sortDir=1;
+function sortTable(col){
+  if(sortCol===col){sortDir*=-1;}else{sortCol=col;sortDir=col==='monto'?-1:1;}
+  ['desc','monto','cat','medio','date'].forEach(c=>{
+    const el=document.getElementById('sort-'+c);
+    if(el)el.textContent=c===sortCol?(sortDir===1?' ↑':' ↓'):'';
+  });
+  const m=curMonth(),s=gs(m);renderTable(s);
+}
 function toggleSelectionMode(){
   selectionMode=!selectionMode;
   const btn=document.getElementById('btn-seleccionar');
@@ -1313,8 +1320,22 @@ function renderTable(s){
   const gastos=s.gastos||[],tabla=document.getElementById('tabla'),empty=document.getElementById('empty-msg');
   if(!gastos.length){tabla.style.display='none';empty.style.display='block';clearSelection();return;}
   tabla.style.display='table';empty.style.display='none';
-  document.getElementById('tbody').innerHTML=[...gastos].reverse().map((g,ri)=>{
-    const i=gastos.length-1-ri,col=catColor(g.cat),short=g.cat.length>18?g.cat.substring(0,16)+'…':g.cat;
+  let indices=[...Array(gastos.length).keys()];
+  if(sortCol){
+    indices.sort((a,b)=>{
+      let va=gastos[a][sortCol]||'',vb=gastos[b][sortCol]||'';
+      if(sortCol==='monto'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return(va-vb)*sortDir;}
+      if(sortCol==='date'){
+        const pd=d=>d?d.split('/').reverse().join(''):'';
+        return pd(va)<pd(vb)?-sortDir:sortDir;
+      }
+      return String(va).localeCompare(String(vb),'es')*sortDir;
+    });
+  } else {
+    indices.reverse();
+  }
+  document.getElementById('tbody').innerHTML=indices.map((i)=>{
+    const g=gastos[i],col=catColor(g.cat),short=g.cat.length>18?g.cat.substring(0,16)+'…':g.cat;
     const fijoTag=g.fijo?`<span class="fijo-tag">fijo</span>`:'';
     const usdTag=g.moneda==='USD'?`<span class="fijo-tag" style="background:#0a1a3d;color:#60a5fa;border-color:#1a3a6d">USD ${g.montoUSD}</span>`:'';
     const chkCell=selectionMode
@@ -1735,6 +1756,7 @@ document.addEventListener('keydown',e=>{
 });
 
 (function init(){
+  initFirebase();
   const d=new Date();document.getElementById('hoy').textContent=d.toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'});
   refreshSels();
   let ms=getMonths();const t=todayKey();
