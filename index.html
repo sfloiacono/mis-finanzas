@@ -803,7 +803,12 @@ async function syncFromCloud(){
     const data=snap.val();
     Object.keys(data).forEach(k=>{if(k.startsWith(K))localStorage.setItem(k,data[k]);});
     showSyncStatus('✓ Sincronizado');
-    refreshSels();renderMonthSel();loadMonth();
+    // Reload completo del estado
+    refreshSels();
+    const ms=getMonths();
+    if(ms.length&&!ms.includes(curMonth()))setCur(ms[ms.length-1]);
+    renderMonthSel();
+    loadMonth();
     toast('Datos sincronizados');
   }catch(e){
     showSyncStatus('Error de sync');
