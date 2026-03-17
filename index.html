@@ -855,7 +855,11 @@ function newMonth(){
   let ms=getMonths();if(!ms.includes(k)){ms.push(k);ms.sort();saveMonths(ms);}
   setCur(k);renderMonthSel();loadMonth();toast('Mes '+mLabel(k)+' creado');
 }
-function changeMonth(){setCur(document.getElementById('month-sel').value);loadMonth();}
+function changeMonth(){
+  sortCol=null;sortDir=1;
+  ['desc','monto','cat','medio','date'].forEach(c=>{const el=document.getElementById('sort-'+c);if(el)el.textContent='';});
+  setCur(document.getElementById('month-sel').value);loadMonth();
+}
 function renderMonthSel(){
   const sel=document.getElementById('month-sel'),ms=getMonths(),cur=curMonth();
   sel.innerHTML=ms.map(m=>`<option value="${m}"${m===cur?' selected':''}>${mLabel(m)}</option>`).join('');
@@ -1340,7 +1344,9 @@ function renderTable(s){
     indices.reverse();
   }
   document.getElementById('tbody').innerHTML=indices.map((i)=>{
-    const g=gastos[i],col=catColor(g.cat),short=g.cat.length>18?g.cat.substring(0,16)+'…':g.cat;
+    const g=gastos[i];
+    if(!g)return '';
+    const col=catColor(g.cat||''),short=(g.cat||'Sin categoría').length>18?(g.cat||'').substring(0,16)+'…':(g.cat||'Sin categoría');
     const fijoTag=g.fijo?`<span class="fijo-tag">fijo</span>`:'';
     const usdTag=g.moneda==='USD'?`<span class="fijo-tag" style="background:#0a1a3d;color:#60a5fa;border-color:#1a3a6d">USD ${g.montoUSD}</span>`:'';
     const chkCell=selectionMode
