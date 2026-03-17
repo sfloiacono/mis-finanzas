@@ -1300,7 +1300,7 @@ function deleteGasto(i){
   const m=curMonth(),s=gs(m);s.gastos.splice(i,1);ss(m,s);
   ps('delete');updateMetrics(s);renderTable(s);
 }
-let sortCol=null,sortDir=1;
+let sortCol=null,sortDir=1,selectionMode=false;
 function sortTable(col){
   if(sortCol===col){sortDir*=-1;}else{sortCol=col;sortDir=col==='monto'?-1:1;}
   ['desc','monto','cat','medio','date'].forEach(c=>{
